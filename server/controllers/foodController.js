@@ -1,11 +1,6 @@
 const foodModel = require('../models/foodModel');
 
 const foodController = {
-  /**
-   * Get all foods by shop ID
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async getFoodsByShopId(req, res) {
     try {
       const { shopId } = req.params;
@@ -34,11 +29,6 @@ const foodController = {
     }
   },
 
-  /**
-   * Get food by ID
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async getFoodById(req, res) {
     try {
       const { foodId } = req.params;
@@ -73,11 +63,6 @@ const foodController = {
     }
   },
 
-  /**
-   * Get all foods with optional filters
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async getAllFoods(req, res) {
     try {
       const { categoryId, status, search } = req.query;
@@ -104,11 +89,6 @@ const foodController = {
     }
   },
 
-  /**
-   * Create a new food item
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async createFood(req, res) {
     try {
       const { name, price, image_url, shop_id, category_id, status } = req.body;
@@ -153,11 +133,6 @@ const foodController = {
     }
   },
 
-  /**
-   * Update a food item
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async updateFood(req, res) {
     try {
       const { foodId } = req.params;
@@ -219,11 +194,6 @@ const foodController = {
     }
   },
 
-  /**
-   * Delete a food item
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async deleteFood(req, res) {
     try {
       const { foodId } = req.params;
@@ -261,11 +231,6 @@ const foodController = {
     }
   },
 
-  /**
-   * Get foods by category
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async getFoodsByCategory(req, res) {
     try {
       const { categoryId } = req.params;
@@ -294,11 +259,6 @@ const foodController = {
     }
   },
 
-  /**
-   * Update food status
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   */
   async updateFoodStatus(req, res) {
     try {
       const { foodId } = req.params;
