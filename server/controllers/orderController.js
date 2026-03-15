@@ -1,153 +1,267 @@
-const db = require('../config/db');
+const orderModel = require('../models/orderModel');
+const cartModel = require('../models/cartModel');
 
-/**
- * Create new order
- */
-exports.createOrder = async (req, res) => {
+const orderController = {
+  async createOrder(req, res) {
     try {
-        const { user_id, shop_id, total_price, items } = req.body;
+      const userId = req.user.id;
+      const { shop_id, total_price, items } = req.body;
 
-        if (!user_id || !shop_id || !items || items.length === 0) {
-            return res.status(400).json({ message: 'user_id, shop_id, and items are required' });
-        }
-
-        // Insert order
-        const [orderResult] = await db.query(
-            'INSERT INTO orders (user_id, shop_id, total_price, status) VALUES (?, ?, ?, ?)',
-            [user_id, shop_id, total_price, 'pending']
-        );
-
-        const orderId = orderResult.insertId;
-
-        // Insert order items
-        for (const item of items) {
-            await db.query(
-                'INSERT INTO order_items (order_id, food_id, quantity, base_price, total_price, selected_options) VALUES (?, ?, ?, ?, ?, ?)',
-                [orderId, item.food_id, item.quantity, item.base_price || item.price, item.total_price || (item.quantity * (item.price || 0)), JSON.stringify(item.selected_options || {})]
-            );
-        }
-
-        res.status(201).json({
-            order_id: orderId,
-            user_id,
-            shop_id,
-            total_price,
-            status: 'pending',
-            created_at: new Date()
+      if (!shop_id || !items || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'shop_id and items are required'
         });
-    } catch (error) {
-        console.error('Error creating order:', error);
-        res.status(500).json({ message: 'Error creating order' });
-    }
-};
+      }
 
-/**
- * Get order history for user
- */
-exports.getOrderHistory = async (req, res) => {
-    try {
-        const { userId } = req.params;
-
-        const [orders] = await db.query(
-            'SELECT id, total_price, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC',
-            [userId]
-        );
-
-        res.json(orders);
-    } catch (error) {
-        console.error('Error fetching order history:', error);
-        res.status(500).json({ message: 'Error fetching order history' });
-    }
-};
-
-/**
- * Get order by ID with items
- */
-exports.getOrderById = async (req, res) => {
-    try {
-        const { orderId } = req.params;
-
-        const [orders] = await db.query(
-            'SELECT * FROM orders WHERE id = ?',
-            [orderId]
-        );
-
-        if (orders.length === 0) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
-
-        const [items] = await db.query(
-            'SELECT * FROM order_items WHERE order_id = ?',
-            [orderId]
-        );
-
-        res.json({
-            ...orders[0],
-            items
+      if (!total_price || total_price <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid total_price is required'
         });
-    } catch (error) {
-        console.error('Error fetching order:', error);
-        res.status(500).json({ message: 'Error fetching order' });
-    }
-};
+      }
 
-/**
- * Update order status
- */
-exports.updateOrder = async (req, res) => {
+      const newOrder = await orderModel.createOrderWithItems({
+        user_id: userId,
+        shop_id,
+        total_price,
+        items
+      });
+
+      await cartModel.clearCart(userId);
+
+      res.status(201).json({
+        success: true,
+        message: 'Order created successfully',
+        data: newOrder
+      });
+    } catch (error) {
+      console.error('Create order error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error creating order',
+        error: error.message
+      });
+    }
+  },
+
+  async getOrderById(req, res) {
     try {
-        const { orderId } = req.params;
-        const { status } = req.body;
+      const { orderId } = req.params;
 
-        if (!status) {
-            return res.status(400).json({ message: 'Status is required' });
-        }
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Order ID is required'
+        });
+      }
 
-        const validStatuses = ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({ message: 'Invalid status' });
-        }
+      const order = await orderModel.getOrderById(orderId);
 
-        await db.query(
-            'UPDATE orders SET status = ? WHERE id = ?',
-            [status, orderId]
-        );
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: 'Order not found'
+        });
+      }
 
-        res.json({ message: 'Order updated', status });
+      res.status(200).json({
+        success: true,
+        data: order
+      });
     } catch (error) {
-        console.error('Error updating order:', error);
-        res.status(500).json({ message: 'Error updating order' });
+      console.error('Get order error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching order',
+        error: error.message
+      });
     }
-};
+  },
 
-/**
- * Cancel order
- */
-exports.cancelOrder = async (req, res) => {
+  async getUserOrders(req, res) {
     try {
-        const { orderId } = req.params;
+      const userId = req.user.id;
+      const { status } = req.query;
 
-        const [orders] = await db.query(
-            'SELECT status FROM orders WHERE id = ?',
-            [orderId]
-        );
+      const filters = {};
+      if (status) filters.status = status;
 
-        if (orders.length === 0) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
+      const orders = await orderModel.getOrdersByUserId(userId, filters);
 
-        if (orders[0].status !== 'pending') {
-            return res.status(400).json({ message: 'Can only cancel pending orders' });
-        }
-
-        await db.query(
-            'UPDATE orders SET status = ? WHERE id = ?',
-            ['cancelled', orderId]
-        );
-
-        res.json({ message: 'Order cancelled' });
+      res.status(200).json({
+        success: true,
+        data: orders,
+        count: orders.length
+      });
     } catch (error) {
-        console.error('Error cancelling order:', error);
-        res.status(500).json({ message: 'Error cancelling order' });
+      console.error('Get user orders error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching user orders',
+        error: error.message
+      });
     }
+  },
+
+  async getShopOrders(req, res) {
+    try {
+      const { shopId } = req.params;
+      const { status } = req.query;
+
+      if (!shopId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Shop ID is required'
+        });
+      }
+
+      const filters = {};
+      if (status) filters.status = status;
+
+      const orders = await orderModel.getOrdersByShopId(shopId, filters);
+
+      res.status(200).json({
+        success: true,
+        data: orders,
+        count: orders.length
+      });
+    } catch (error) {
+      console.error('Get shop orders error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching shop orders',
+        error: error.message
+      });
+    }
+  },
+
+  async getAllOrders(req, res) {
+    try {
+      const { status, shop_id } = req.query;
+
+      const filters = {};
+      if (status) filters.status = status;
+      if (shop_id) filters.shop_id = shop_id;
+
+      const orders = await orderModel.getAllOrders(filters);
+
+      res.status(200).json({
+        success: true,
+        data: orders,
+        count: orders.length
+      });
+    } catch (error) {
+      console.error('Get all orders error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching orders',
+        error: error.message
+      });
+    }
+  },
+
+  async updateOrderStatus(req, res) {
+    try {
+      const { orderId } = req.params;
+      const { status } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Order ID is required'
+        });
+      }
+
+      if (!status) {
+        return res.status(400).json({
+          success: false,
+          message: 'Status is required'
+        });
+      }
+
+      const order = await orderModel.getOrderById(orderId);
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: 'Order not found'
+        });
+      }
+
+      await orderModel.updateOrderStatus(orderId, status);
+
+      const updatedOrder = await orderModel.getOrderById(orderId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Order status updated successfully',
+        data: updatedOrder
+      });
+    } catch (error) {
+      console.error('Update order status error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error updating order status',
+        error: error.message
+      });
+    }
+  },
+
+  async cancelOrder(req, res) {
+    try {
+      const { orderId } = req.params;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Order ID is required'
+        });
+      }
+
+      await orderModel.cancelOrder(orderId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Order cancelled successfully',
+        data: { id: orderId, status: 'cancelled' }
+      });
+    } catch (error) {
+      console.error('Cancel order error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: error.message,
+        error: error.message
+      });
+    }
+  },
+
+  async getOrderItems(req, res) {
+    try {
+      const { orderId } = req.params;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Order ID is required'
+        });
+      }
+
+      const items = await orderModel.getOrderItems(orderId);
+
+      res.status(200).json({
+        success: true,
+        data: items,
+        count: items.length
+      });
+    } catch (error) {
+      console.error('Get order items error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching order items',
+        error: error.message
+      });
+    }
+  }
 };
+
+module.exports = orderController;

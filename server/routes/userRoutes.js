@@ -4,30 +4,36 @@ const authController = require('../controllers/authController');
 const { verifyToken } = require('../middleware/auth');
 
 /**
- * POST /FoodO/api/auth/login
+ * Public Routes
+ */
+
+/**
+ * POST /auth/login
  * Login user with phone and password
- * Body: { phone, password }
  * Returns: { success, message, data: { user_id, phone, full_name, role, token } }
  */
 router.post('/login', authController.login);
 
 /**
- * POST /FoodO/api/auth/register
+ * POST /auth/register
  * Register new user
- * Body: { phone, password, full_name, role? }
  * Returns: { success, message, data: { user_id, phone, full_name, role, token } }
  */
 router.post('/register', authController.register);
 
 /**
- * GET /FoodO/api/auth/profile
+ * Protected Routes (require JWT token)
+ */
+
+/**
+ * GET /auth/profile
  * Get current user profile (requires authentication)
  * Returns: { success, data: { id, phone, full_name, role, status, created_at } }
  */
 router.get('/profile', verifyToken, authController.getProfile);
 
 /**
- * PUT /FoodO/api/auth/profile
+ * PUT /auth/profile
  * Update current user profile (requires authentication)
  * Body: { full_name?, status? }
  * Returns: { success, message, data: { id, phone, full_name, role, status, created_at } }

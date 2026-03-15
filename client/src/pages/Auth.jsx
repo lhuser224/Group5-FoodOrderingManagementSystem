@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, register, forgotPassword } from '../services/authService';
 import styles from './Auth.module.css';
 
 export default function Auth() {
-  const [state, setState] = useState('login'); // login | register | forgot
+  const [state, setState] = useState('login');
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
@@ -12,7 +12,16 @@ export default function Auth() {
     full_name: ''
   });
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate('/');
+    }
+  }, [navigate]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;

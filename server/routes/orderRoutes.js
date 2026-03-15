@@ -1,36 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/auth');
 const orderController = require('../controllers/orderController');
+const { verifyToken } = require('../middleware/auth');
 
-/**
- * POST /FoodO/orders
- * Create new order
- */
 router.post('/', verifyToken, orderController.createOrder);
 
-/**
- * GET /FoodO/orders/history/:userId
- * Get order history for user
- */
-router.get('/history/:userId', verifyToken, orderController.getOrderHistory);
+router.get('/', verifyToken, orderController.getUserOrders);
 
-/**
- * GET /FoodO/orders/:orderId
- * Get order details with items
- */
+router.get('/all', orderController.getAllOrders);
+
+router.get('/shop/:shopId', orderController.getShopOrders);
+
 router.get('/:orderId', verifyToken, orderController.getOrderById);
 
-/**
- * PATCH /FoodO/orders/:orderId
- * Update order status
- */
-router.patch('/:orderId', verifyToken, orderController.updateOrder);
+router.get('/:orderId/items', verifyToken, orderController.getOrderItems);
 
-/**
- * PATCH /FoodO/orders/:orderId/cancel
- * Cancel order
- */
+router.patch('/:orderId/status', verifyToken, orderController.updateOrderStatus);
+
 router.patch('/:orderId/cancel', verifyToken, orderController.cancelOrder);
 
 module.exports = router;

@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { getFoods, addFood, toggleFoodStatus } from '../services/foodService';
+import { getShopOrders, updateOrderStatus } from '../services/orderService';
 import styles from './SellerDashboard.module.css';
 
 export default function SellerDashboard() {
-  const { shopId } = useParams();
+  const navigate = useNavigate();
+  const [shopId] = useState(localStorage.getItem('shopId') || 1);
   const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('foods');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [alertMsg, setAlertMsg] = useState('');
@@ -17,19 +21,28 @@ export default function SellerDashboard() {
     image_url: ''
   });
 
-  // Load products from backend
   useEffect(() => {
-    loadProducts();
-  }, [shopId]);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/auth');
+      return;
+    }
+    loadData();
+  }, [navigate, activeTab]);
 
-  const loadProducts = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getFoods(shopId);
-      setProducts(data);
+      if (activeTab === 'foods') {
+        const foodData = await getFoods(shopId);
+        setProducts(foodData.data || []);
+      } else {
+        const orderData = await getShopOrders(shopId);
+        setOrders(orderData.data || []);
+      }
     } catch (error) {
-      console.error('Lỗi fetch:', error);
-      showAlert('Không thể kết nối đến Database!', 'error');
+      console.error('Load error:', error);
+      showAlert('Không thể kết nối đến server!', 'error');
     } finally {
       setLoading(false);
     }
@@ -38,11 +51,22 @@ export default function SellerDashboard() {
   const handleToggleFoodStatus = async (foodId) => {
     try {
       await toggleFoodStatus(shopId, foodId);
-      loadProducts(); // Reload to reflect status change
-      showAlert('Trạng thái đã được cập nhật!', 'success');
+      showAlert('Cập nhật thành công!', 'success');
+      loadData();
     } catch (error) {
-      console.error('Error toggling status:', error);
-      showAlert('Lỗi: Không thể cập nhật trạng thái!', 'error');
+      console.error('Error:', error);
+      showAlert('Lỗi: Không thể cập nhật!', 'error');
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      showAlert('Cập nhật đơn hàng thành công!', 'success');
+      loadData();
+    } catch (error) {
+      console.error('Error:', error);
+      showAlert('Lỗi: Không thể cập nhật đơn hàng!', 'error');
     }
   };
 
@@ -62,158 +86,187 @@ export default function SellerDashboard() {
 
   const handleSubmitFood = async () => {
     if (!formData.name || !formData.price) {
-      showAlert('Lỗi: Vui lòng nhập đầy đủ tên và giá!', 'error');
+      showAlert('Vui lòng nhập đầy đủ tên và giá!', 'error');
       return;
     }
 
     try {
-      const result = await addFood(shopId, {
+      await addFood(shopId, {
         name: formData.name,
-        price: formData.price,
+        price: parseFloat(formData.price),
         image_url: formData.image_url,
         category_id: 1
       });
-
-      showAlert('Thành công: Món ăn đã được thêm!', 'success');
+      showAlert('Thêm món thành công!', 'success');
       setShowForm(false);
       setFormData({ name: '', price: '', image_url: '' });
-      loadProducts(); // Reload products
-    } catch (err) {
-      console.error(err);
-      showAlert('Lỗi: ' + (err.message || 'Không thể kết nối Server!'), 'error');
+      loadData();
+    } catch (error) {
+      console.error('Error:', error);
+      showAlert('Lỗi: Không thể thêm món ăn!', 'error');
     }
   };
 
   return (
-    <>
+    <div className={styles.sellerDashboardWrapper}>
       <Navbar />
-
-      <div className={`container ${styles.mainContentArea} mt-20`}>
-        <aside className={styles.sidebarWireframe}>
-          <h3 className={styles.filterTitle}>Quản lý Cửa hàng #{shopId}</h3>
-          <button
-            className="btn btn-primary w-100 mb-10"
-            onClick={() => setShowForm(!showForm)}
-          >
-            <i className="fa-solid fa-plus"></i> Thêm món mới
-          </button>
-          <p className={styles.checkboxRow}>
-            Sản phẩm: <strong className={styles.productCount}>{products.length}</strong>
-          </p>
-        </aside>
-
-        <main className={styles.productSection}>
-          {/* Status Alert */}
-          {alertMsg && (
-            <div
-              className={`${styles.statusAlert} ${alertType === 'error' ? styles.error : ''}`}
-            >
-              {alertMsg}
-            </div>
-          )}
-
-          {/* Form Display */}
-          {showForm && (
-            <div className={styles.sellerFormDisplay}>
-              <div className={styles.formInnerContent}>
-                <h2>Thêm món ăn</h2>
-                <div className={styles.inputGroup}>
-                  <input
-                    type="text"
-                    id="name"
-                    className="form-control"
-                    placeholder="Tên món"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className={styles.inputGroup}>
-                  <input
-                    type="number"
-                    id="price"
-                    className="form-control"
-                    placeholder="Giá ($)"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className={styles.inputGroup}>
-                  <input
-                    type="text"
-                    id="image_url"
-                    className="form-control"
-                    placeholder="Link hình ảnh"
-                    value={formData.image_url}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <button
-                  className={styles.btnSubmit}
-                  onClick={handleSubmitFood}
-                >
-                  Lưu món ăn
-                </button>
-              </div>
-              <div className={styles.textRight}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowForm(false)}
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className={styles.sectionHead}>
-            <h3>Thực đơn từ Database</h3>
+      
+      <div className={styles.dashboardContainer}>
+        {alertMsg && (
+          <div className={`${styles.alert} ${styles[alertType]}`}>
+            {alertMsg}
           </div>
+        )}
 
-          {loading ? (
-            <div className={styles.gridV2}>
-              <p>Đang tải dữ liệu...</p>
-            </div>
-          ) : (
-            <div className={styles.gridV2}>
-              {products.length > 0 ? (
-                products.map((product) => (
-                  <div key={product.id} className={styles.cardV2}>
-                    <div className={styles.cardThumb}>
-                      <div className={styles.imgPlaceholder}>
-                        <i className="fa-solid fa-utensils"></i>
-                      </div>
-                      <div className={styles.badgeTime}>
-                        {product.status === 'available' ? 'Đang bán' : 'Tạm ẩn'}
-                      </div>
+        <div className={styles.dashboardHeader}>
+          <h1>Quản lý cửa hàng</h1>
+          <div className={styles.tabs}>
+            <button
+              className={`${styles.tab} ${activeTab === 'foods' ? styles.active : ''}`}
+              onClick={() => setActiveTab('foods')}
+            >
+              <i className="fa-solid fa-utensils"></i> Danh sách món
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'orders' ? styles.active : ''}`}
+              onClick={() => setActiveTab('orders')}
+            >
+              <i className="fa-solid fa-receipt"></i> Đơn hàng
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'foods' && (
+          <div className={styles.foodsSection}>
+            <button
+              className={styles.addFoodBtn}
+              onClick={() => setShowForm(!showForm)}
+            >
+              <i className="fa-solid fa-plus"></i> Thêm món ăn
+            </button>
+
+            {showForm && (
+              <div className={styles.formContainer}>
+                <h3>Thêm món ăn mới</h3>
+                <input
+                  type="text"
+                  id="name"
+                  placeholder="Tên món ăn"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                />
+                <input
+                  type="number"
+                  id="price"
+                  placeholder="Giá (VND)"
+                  step="1000"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                />
+                <input
+                  type="text"
+                  id="image_url"
+                  placeholder="URL hình ảnh"
+                  value={formData.image_url}
+                  onChange={handleInputChange}
+                />
+                <div className={styles.formActions}>
+                  <button className={styles.btnSave} onClick={handleSubmitFood}>
+                    Lưu
+                  </button>
+                  <button className={styles.btnCancel} onClick={() => setShowForm(false)}>
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {loading ? (
+              <div className={styles.loading}>Đang tải...</div>
+            ) : (
+              <div className={styles.foodsList}>
+                {products.map((food) => (
+                  <div key={food.id} className={styles.foodCard}>
+                    <div className={styles.foodImage}>
+                      {food.image_url ? (
+                        <img src={food.image_url} alt={food.name} />
+                      ) : (
+                        <i className="fa-solid fa-image"></i>
+                      )}
                     </div>
-                    <div className={styles.cardDetails}>
-                      <h4 className={styles.foodName}>{product.name}</h4>
-                      <div className={styles.priceTag}>${product.price}</div>
-                      <div className={styles.cardBottom}>
-                        <label className={styles.switch}>
+                    <div className={styles.foodInfo}>
+                      <h3>{food.name}</h3>
+                      <p className={styles.price}>${food.price.toFixed(2)}</p>
+                      <div className={styles.foodActions}>
+                        <label className={styles.switchToggle}>
                           <input
                             type="checkbox"
-                            defaultChecked={product.status === 'available'}
-                            onChange={() => handleToggleFoodStatus(product.id)}
+                            checked={food.status === 'available'}
+                            onChange={() => handleToggleFoodStatus(food.id)}
                           />
                           <span className={styles.slider}></span>
+                          {food.status === 'available' ? 'Kinh doanh' : 'Tạm dừng'}
                         </label>
-                        <button
-                          className={styles.btnEdit}
-                        >
-                          <i className="fa-solid fa-pen"></i>
-                        </button>
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p>Chưa có món ăn nào.</p>
-              )}
-            </div>
-          )}
-        </main>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className={styles.ordersSection}>
+            {loading ? (
+              <div className={styles.loading}>Đang tải...</div>
+            ) : (
+              <div className={styles.ordersList}>
+                {orders.map((order) => (
+                  <div key={order.id} className={styles.orderCard}>
+                    <div className={styles.orderHeader}>
+                      <h3>Đơn #{order.id}</h3>
+                      <span className={styles.orderStatus}>{order.status}</span>
+                    </div>
+                    <div className={styles.orderDetails}>
+                      <p><strong>Khách:</strong> {order.user_details?.full_name || 'N/A'}</p>
+                      <p><strong>SĐT:</strong> {order.user_details?.phone || 'N/A'}</p>
+                      <p><strong>Địa chỉ:</strong> {order.user_details?.address_detail || 'N/A'}</p>
+                      <p><strong>Tổng tiền:</strong> ${order.total_price.toFixed(2)}</p>
+                    </div>
+                    <div className={styles.orderActions}>
+                      {order.status === 'pending' && (
+                        <button
+                          className={styles.btnAction}
+                          onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
+                        >
+                          Xác nhận
+                        </button>
+                      )}
+                      {order.status === 'confirmed' && (
+                        <button
+                          className={styles.btnAction}
+                          onClick={() => handleUpdateOrderStatus(order.id, 'shipping')}
+                        >
+                          Đang giao
+                        </button>
+                      )}
+                      {order.status === 'shipping' && (
+                        <button
+                          className={styles.btnAction}
+                          onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
+                        >
+                          Hoàn thành
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

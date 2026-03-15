@@ -1,99 +1,82 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const foodController = require('../controllers/foodController');
+const { verifyToken } = require('../middleware/auth');
 
 /**
- * GET /FoodO/foods
- * Get all foods with optional filtering by shop
+ * PUBLIC ROUTES
  */
-router.get('/', async (req, res) => {
-    try {
-        const { shop_id, category_id, status } = req.query;
-        let query = 'SELECT f.*, c.name as category_name, s.shop_name FROM foods f LEFT JOIN categories c ON f.category_id = c.id LEFT JOIN shops s ON f.shop_id = s.id';
-        const params = [];
-
-        if (shop_id) {
-            query += ' WHERE f.shop_id = ?';
-            params.push(shop_id);
-        }
-        if (category_id) {
-            query += params.length ? ' AND' : ' WHERE';
-            query += ' f.category_id = ?';
-            params.push(category_id);
-        }
-        if (status) {
-            query += params.length ? ' AND' : ' WHERE';
-            query += ' f.status = ?';
-            params.push(status);
-        }
-
-        const [foods] = await db.query(query, params);
-        res.json(foods);
-    } catch (error) {
-        console.error('Error fetching foods:', error);
-        res.status(500).json({ message: 'Error fetching foods' });
-    }
-});
 
 /**
- * GET /FoodO/foods/:id
- * Get single food by ID
+ * GET /FoodO/api/foods
+ * Get all foods with optional filters
+ * Query params: categoryId, status, search
+ * Returns: { success, data: [...], count }
  */
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const [foods] = await db.query(
-            'SELECT f.*, c.name as category_name FROM foods f LEFT JOIN categories c ON f.category_id = c.id WHERE f.id = ?',
-            [id]
-        );
-
-        if (foods.length === 0) {
-            return res.status(404).json({ message: 'Food not found' });
-        }
-
-        res.json(foods[0]);
-    } catch (error) {
-        console.error('Error fetching food:', error);
-        res.status(500).json({ message: 'Error fetching food' });
-    }
-});
+router.get('/', foodController.getAllFoods);
 
 /**
- * GET /FoodO/foods/search
- * Search foods by name or category
+ * GET /FoodO/api/foods/shop/:shopId
+ * Get all foods for a specific shop
+ * Returns: { success, data: [...], count }
  */
-router.get('/search', async (req, res) => {
-    try {
-        const { q } = req.query;
-        if (!q) {
-            return res.status(400).json({ message: 'Search query required' });
-        }
-
-        const searchTerm = `%${q}%`;
-        const [foods] = await db.query(
-            'SELECT f.*, c.name as category_name FROM foods f LEFT JOIN categories c ON f.category_id = c.id WHERE f.name LIKE ? OR c.name LIKE ?',
-            [searchTerm, searchTerm]
-        );
-
-        res.json(foods);
-    } catch (error) {
-        console.error('Error searching foods:', error);
-        res.status(500).json({ message: 'Error searching foods' });
-    }
-});
+router.get('/shop/:shopId', foodController.getFoodsByShopId);
 
 /**
- * GET /FoodO/categories
- * Get all food categories
+ * GET /FoodO/api/foods/category/:categoryId
+ * Get all foods in a specific category
+ * Returns: { success, data: [...], count }
  */
-router.get('/categories/all', async (req, res) => {
-    try {
-        const [categories] = await db.query('SELECT * FROM categories');
-        res.json(categories);
-    } catch (error) {
-        console.error('Error fetching categories:', error);
-        res.status(500).json({ message: 'Error fetching categories' });
-    }
-});
+router.get('/category/:categoryId', foodController.getFoodsByCategory);
+
+/**
+ * GET /FoodO/api/foods/search
+ * Search foods by name
+ * Query params: term
+ * Returns: { success, data: [...], count }
+ */
+router.get('/search', foodController.searchFoods);
+
+/**
+ * GET /FoodO/api/foods/:foodId
+ * Get food by ID
+ * Returns: { success, data: {...} }
+ */
+router.get('/:foodId', foodController.getFoodById);
+
+/**
+ * PROTECTED ROUTES (require authentication)
+ */
+
+/**
+ * POST /FoodO/api/foods
+ * Create a new food item (requires auth)
+ * Body: { name, price, image_url?, shop_id, category_id?, status? }
+ * Returns: { success, message, data: {...} }
+ */
+router.post('/', verifyToken, foodController.createFood);
+
+/**
+ * PUT /FoodO/api/foods/:foodId
+ * Update a food item (requires auth)
+ * Body: { name?, price?, image_url?, category_id?, status? }
+ * Returns: { success, message, data: {...} }
+ */
+router.put('/:foodId', verifyToken, foodController.updateFood);
+
+/**
+ * DELETE /FoodO/api/foods/:foodId
+ * Delete a food item (requires auth)
+ * Returns: { success, message, data: { id } }
+ */
+router.delete('/:foodId', verifyToken, foodController.deleteFood);
+
+/**
+ * PATCH /FoodO/api/foods/:foodId/status
+ * Update food status (requires auth)
+ * Body: { status: 'available' | 'unavailable' | 'deleted' }
+ * Returns: { success, message, data: {...} }
+ */
+router.patch('/:foodId/status', verifyToken, foodController.updateFoodStatus);
 
 module.exports = router;

@@ -1,7 +1,7 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppContext } from '../context/AppContext';
 import Navbar from '../components/Navbar';
+import { getUserOrders, cancelOrder, updateOrderStatus } from '../services/orderService';
 import styles from './History.module.css';
 
 function CancelModal({ isOpen, onClose, onConfirm, orderId }) {
@@ -12,7 +12,7 @@ function CancelModal({ isOpen, onClose, onConfirm, orderId }) {
       alert('Vui lòng chọn lý do!');
       return;
     }
-    onConfirm(orderId, reason);
+    onConfirm(orderId);
     setReason('');
   };
 
@@ -58,29 +58,32 @@ function CancelModal({ isOpen, onClose, onConfirm, orderId }) {
 }
 
 export default function History() {
-  const { state, dispatch } = useContext(AppContext);
-  const { orders } = state;
   const navigate = useNavigate();
-
-  const cancelOrder = (orderId, reason) => {
-    dispatch({ type: 'CANCEL_ORDER', payload: { orderId, reason } });
-  };
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [orderRefreshTime, setOrderRefreshTime] = useState(0);
 
-  // Auto-refresh every 60 seconds to update cancellation buttons
   useEffect(() => {
-    const interval = setInterval(() => {
-      setOrderRefreshTime((prev) => prev + 1);
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/auth');
+      return;
+    }
+    loadOrders();
+  }, [navigate]);
 
-  const isCancellable = (orderDateStr) => {
-    const orderTime = new Date(orderDateStr).getTime();
-    const currentTime = new Date().getTime();
-    return currentTime - orderTime < 60000; // 60 seconds
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await getUserOrders();
+      setOrders(response.data || []);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpenCancelModal = (orderId) => {
@@ -88,14 +91,32 @@ export default function History() {
     setShowCancelModal(true);
   };
 
-  const handleConfirmCancel = (orderId, reason) => {
-    cancelOrder(orderId, reason);
-    setShowCancelModal(false);
-    setSelectedOrderId(null);
-    alert('Đã hủy đơn thành công');
+  const handleConfirmCancel = async (orderId) => {
+    try {
+      await cancelOrder(orderId);
+      alert('Đã hủy đơn hàng thành công');
+      setShowCancelModal(false);
+      setSelectedOrderId(null);
+      loadOrders();
+    } catch (error) {
+      console.error('Cancel error:', error);
+      alert('Lỗi: Không thể hủy đơn hàng!');
+    }
   };
 
-  if (orders.length === 0) {
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: '#FF9800',
+      confirmed: '#2196F3',
+      shipping: '#00BCD4',
+      completed: '#4CAF50',
+      cancelled: '#F44336',
+      processing: '#FF9800'
+    };
+    return colors[status] || '#666';
+  };
+
+  if (!localStorage.getItem('token')) {
     return (
       <>
         <Navbar />
@@ -124,31 +145,9 @@ export default function History() {
       <div className={`container ${styles.mainContentArea} ${styles.historyLayout}`}>
         <h2 className={styles.pageTitle}>Lịch sử đơn hàng</h2>
 
-        <div className={styles.historyTabsModern}>
-          <button className={`${styles.tabModern} ${styles.active}`}>Tất cả</button>
-          <button className={styles.tabModern}>Đang xử lý</button>
-          <button className={styles.tabModern}>Đã giao</button>
-          <button className={styles.tabModern}>Đã hủy</button>
-        </div>
-
         <div>
           {orders.map((order) => {
-            const canCancel = isCancellable(order.date) && order.status === 'Processing';
-
-            let statusBadge = '';
-            let badgeClass = '';
-            if (order.status === 'Processing') {
-              statusBadge = 'Đang xử lý';
-              badgeClass = styles.badgeWarning;
-            }
-            if (order.status === 'Cancelled') {
-              statusBadge = 'Đã hủy';
-              badgeClass = styles.badgeDanger;
-            }
-            if (order.status === 'Delivered') {
-              statusBadge = 'Đã giao';
-              badgeClass = styles.badgeSuccess;
-            }
+            const canCancel = order.status === 'pending';
 
             return (
               <div
@@ -161,72 +160,58 @@ export default function History() {
                       <i className="fa-solid fa-store"></i> Food Order App
                     </span>
                     <span className={styles.orderId}>
-                      ID: {order.id}
+                      Đơn #{order.id}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span className={`${styles.badge} ${badgeClass}`}>
-                      {statusBadge}
+                    <span
+                      className={styles.badge}
+                      style={{ backgroundColor: getStatusColor(order.status) }}
+                    >
+                      {order.status === 'pending' && 'Chờ xác nhận'}
+                      {order.status === 'confirmed' && 'Đã xác nhận'}
+                      {order.status === 'shipping' && 'Đang giao'}
+                      {order.status === 'completed' && 'Đã giao'}
+                      {order.status === 'cancelled' && 'Đã hủy'}
                     </span>
                     {canCancel && (
                       <span className={styles.countdownHint}>
-                        <i className="fa-regular fa-clock"></i> Có thể hủy trong 1 phút
+                        <i className="fa-regular fa-clock"></i> Có thể hủy
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div style={{ marginBottom: '15px' }}>
-                  {order.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className={styles.orderItemRow}
-                    >
-                      <div className={styles.itemImgSmall}>
-                        <i className="fa-solid fa-utensils"></i>
-                      </div>
-                      <div className={styles.itemDetail}>
-                        <div className={styles.itemName}>{item.name}</div>
-                        <div className={styles.itemPrice}>
-                          x{item.quantity || 1} &nbsp; ${(item.totalPrice || item.price).toFixed(2)}
-                        </div>
-                      </div>
-                      <div className={styles.itemTotalPrice}>
-                        ${(item.totalPrice || item.price).toFixed(2)}
+                  <div className={styles.orderItemRow}>
+                    <div className={styles.itemImgSmall}>
+                      <i className="fa-solid fa-utensils"></i>
+                    </div>
+                    <div className={styles.itemDetail}>
+                      <div className={styles.itemName}>{orders.length} món ăn</div>
+                      <div className={styles.itemPrice}>
+                        Tổng giá: ${order.total_price.toFixed(2)}
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {order.cancelReason && (
-                  <div className={styles.cancelReasonBox}>
-                    <i className="fa-solid fa-circle-info"></i> Lý do hủy: {order.cancelReason}
                   </div>
-                )}
+                </div>
 
                 <div className={styles.orderFooter}>
                   <div className={styles.totalMoney}>
-                    Tổng tiền: <span>
-                      ${order.total.toFixed(2)}
+                    Tổng tiền: <span style={{ color: '#FF6B6B', fontWeight: 'bold' }}>
+                      ${order.total_price.toFixed(2)}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button className="btn btn-secondary btn-sm">
-                      Mua lại
+                      Chi tiết
                     </button>
-                    {canCancel ? (
+                    {canCancel && (
                       <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleOpenCancelModal(order.id)}
                       >
                         Hủy đơn
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        disabled
-                      >
-                        Chi tiết
                       </button>
                     )}
                   </div>

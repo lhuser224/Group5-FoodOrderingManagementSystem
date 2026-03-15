@@ -1,6 +1,4 @@
-/* =========================================
-   GLOBAL RESET & UTILITIES
-   ========================================= */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -15,15 +13,11 @@ body {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 15px;
+  padding: 0;
 }
 
-
-/* =========================================
-   BUTTON UTILITIES
-   ========================================= */
 .btn {
   display: inline-block;
   font-weight: 500;
@@ -61,9 +55,6 @@ body {
   color: #333;
 }
 
-/* =========================================
-   FORM CONTROLS
-   ========================================= */
 .form-control {
   width: 100%;
   padding: 10px;
@@ -85,9 +76,6 @@ textarea.form-control {
   min-height: 100px;
 }
 
-/* =========================================
-   UTILITY CLASSES
-   ========================================= */
 .w-100 {
   width: 100%;
 }
@@ -133,9 +121,6 @@ textarea.form-control {
   font-size: 0.85rem;
 }
 
-/* =========================================
-   SWITCH TOGGLE (Shared Component)
-   ========================================= */
 .switch {
   position: relative;
   display: inline-block;

@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import Navbar from '../components/Navbar';
@@ -9,9 +9,24 @@ export default function Checkout() {
   const { state, dispatch } = useContext(AppContext);
   const { cart } = state;
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [orderId, setOrderId] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    address: '',
+    phone: ''
+  });
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    setIsLoggedIn(!!token && !!user);
+  }, []);
 
   const total = cart.reduce((sum, item) => {
-    return sum + (item.totalPrice || item.price);
+    return sum + (item.totalPrice || item.price * item.quantity);
   }, 0);
 
   const removeFromCart = (index) => {
@@ -21,18 +36,6 @@ export default function Checkout() {
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
   };
-
-  const addOrder = (order) => {
-    dispatch({ type: 'ADD_ORDER', payload: order });
-  };
-
-  const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    phone: ''
-  });
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [orderId, setOrderId] = useState('');
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -44,6 +47,12 @@ export default function Checkout() {
   };
 
   const handleCheckout = async () => {
+    if (!isLoggedIn) {
+      alert('Vui lòng đăng nhập để tiếp tục!');
+      navigate('/auth');
+      return;
+    }
+
     if (!formData.name || !formData.address || !formData.phone) {
       alert('Vui lòng điền đầy đủ thông tin giao hàng!');
       return;
@@ -55,51 +64,39 @@ export default function Checkout() {
     }
 
     try {
-      // Get user ID (for now use a placeholder - in real app this comes from auth context)
+      setLoading(true);
       const userStr = localStorage.getItem('user');
-      const userId = userStr ? JSON.parse(userStr).user_id : null;
+      const userData = userStr ? JSON.parse(userStr) : {};
 
-      if (!userId) {
-        alert('Vui lòng đăng nhập để tiếp tục!');
-        return;
-      }
-
-      // Build order items with selected_options as JSON
       const orderItems = cart.map(item => ({
-        food_id: item.id,
+        food_id: item.id || 1,
         quantity: item.quantity || 1,
-        selected_options: {
+        selected_options: item.selected_options || {
           size: item.size || 'M',
           extras: item.extras || []
         }
       }));
 
-      // Create order payload
       const orderPayload = {
-        user_id: userId,
-        shop_id: 1, // Default shop ID (should come from context or form)
+        shop_id: 1,
         total_price: total,
-        items: orderItems,
-        user_details: {
-          full_name: formData.name,
-          phone: formData.phone,
-          address_detail: formData.address
-        },
-        status: 'Processing'
+        items: orderItems
       };
 
-      // Create order via service
       const response = await createOrder(orderPayload);
 
-      // Show success modal
-      setOrderId(response.order_id || '#ORD-' + Math.floor(100000 + Math.random() * 900000));
+      setOrderId(response.data?.id || '#ORD-' + Math.floor(100000 + Math.random() * 900000));
       setShowSuccess(true);
-
-      // Clear cart
       clearCart();
+      
+      setTimeout(() => {
+        navigate('/history');
+      }, 2000);
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('Lỗi đặt hàng: ' + (error.message || 'Vui lòng thử lại'));
+      alert('Lỗi: ' + (error.message || 'Không thể tạo đơn hàng!'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -155,7 +152,7 @@ export default function Checkout() {
                     <strong>{item.name}</strong>
                     {item.quantity && <div className={styles.quantity}>x{item.quantity}</div>}
                     <div className={styles.price}>
-                      ${(item.totalPrice || item.price).toFixed(2)}
+                      ${(item.totalPrice || item.price * item.quantity).toFixed(2)}
                     </div>
                   </div>
                   <button
@@ -169,13 +166,30 @@ export default function Checkout() {
             )}
           </div>
 
-          <div className={styles.totalRow}>
-            <span>Tổng tiền:</span>
-            <span className={styles.totalPrice}>${total.toFixed(2)}</span>
+          <hr />
+
+          <div className={styles.summaryDetails}>
+            <div className={styles.summaryRow}>
+              <span>Tạm tính:</span>
+              <span>${total.toFixed(2)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span>Phí vận chuyển:</span>
+              <span>$2.00</span>
+            </div>
           </div>
 
-          <button className="btn btn-success w-100 mt-20" onClick={handleCheckout}>
-            Đặt hàng ngay
+          <div className={styles.totalRow}>
+            <span>Tổng tiền:</span>
+            <span className={styles.totalPrice}>${(total + 2).toFixed(2)}</span>
+          </div>
+
+          <button
+            className="btn btn-success w-100 mt-20"
+            onClick={handleCheckout}
+            disabled={loading || cart.length === 0}
+          >
+            {loading ? 'Đang xử lý...' : 'Đặt hàng ngay'}
           </button>
 
           {cart.length === 0 && (
@@ -195,8 +209,18 @@ export default function Checkout() {
             <div className={styles.successIcon}>
               <i className="fa-solid fa-circle-check"></i>
             </div>
-            <h2>Order Confirmed!</h2>
-            <p>Your order has been placed successfully.</p>
+            <h2>Đặt hàng thành công!</h2>
+            <p>Mã đơn hàng: <strong>{orderId}</strong></p>
+            <p>Cảm ơn bạn đã đặt hàng!</p>
+            <button className="btn btn-primary mt-20" onClick={handleReturnMenu}>
+              Về trang chủ
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
             <p className={styles.orderIdText}>
               Order ID: <strong>{orderId}</strong>
             </p>

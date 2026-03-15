@@ -79,20 +79,32 @@ export const updateFood = async (shopId, foodId, foodData) => {
   }
 };
 
-/**
- * Toggle food availability status
- * @param {number} shopId - Shop ID
- * @param {number} foodId - Food ID
- * @returns {Promise<Object>} Updated food item with new status
- */
 export const toggleFoodStatus = async (shopId, foodId) => {
   try {
-    const data = await axiosClient.patch(
-      `/seller/${shopId}/foods/${foodId}/status`
-    );
+    const data = await axiosClient.patch(`/foods/${foodId}/status`);
     return data;
   } catch (error) {
     console.error('Error toggling food status:', error);
+    throw error;
+  }
+};
+
+export const getFoodsByShop = async (shopId) => {
+  try {
+    const data = await axiosClient.get(`/foods/shop/${shopId}`);
+    return data;
+  } catch (error) {
+    console.error('Error fetching shop foods:', error);
+    throw error;
+  }
+};
+
+export const getFoodsByCategory = async (categoryId) => {
+  try {
+    const data = await axiosClient.get(`/foods/category/${categoryId}`);
+    return data;
+  } catch (error) {
+    console.error('Error fetching category foods:', error);
     throw error;
   }
 };
