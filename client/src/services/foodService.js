@@ -11,11 +11,7 @@ export const getFoods = async (shopId) => {
   }
 };
 
-/**
- * Get a single food by ID
- * @param {number} foodId - Food ID
- * @returns {Promise<Object>} Food item
- */
+
 export const getFoodById = async (foodId) => {
   try {
     const data = await axiosClient.get(`/foods/${foodId}`);

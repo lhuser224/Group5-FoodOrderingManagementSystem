@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-  baseURL: '/FoodO/api',
+  baseURL: 'http://localhost:3000/FoodO/api',
   headers: {
     'Content-Type': 'application/json'
   }

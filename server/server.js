@@ -31,8 +31,8 @@ app.use('/FoodO/api/option-groups', optionGroupRoutes);
 app.use('/FoodO/api/option-items', optionItemRoutes);
 app.use('/FoodO/api/food-options', foodOptionRoutes);
 app.use('/FoodO/api/seller', sellerRoutes); 
-
-app.get('*', (req, res) => {
+//https://stackoverflow.com/questions/79553495/throw-new-typeerrormissing-parameter-name-at-i-debug-url
+app.get('/{*any}', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 

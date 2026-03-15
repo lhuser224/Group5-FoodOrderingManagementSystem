@@ -7,15 +7,13 @@ const { generateToken } = require('../middleware/auth');
 router.post('/login', async (req, res) => {
     try {
         const { phone, password } = req.body;
-
-        // Input validation
+        
         if (!phone || !password) {
             return res.status(400).json({ 
                 message: 'Phone and password are required' 
             });
         }
 
-        // Find user by phone
         const [users] = await db.query(
             'SELECT * FROM users WHERE phone = ?',
             [phone]
@@ -28,19 +26,13 @@ router.post('/login', async (req, res) => {
         }
 
         const user = users[0];
-
-        // Verify password
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
             return res.status(401).json({ 
                 message: 'Invalid phone or password' 
             });
         }
-
-        // Generate token
         const token = generateToken(user.id, user.role);
-
-        // Return user data and token
         res.json({
             user_id: user.id,
             full_name: user.full_name,
