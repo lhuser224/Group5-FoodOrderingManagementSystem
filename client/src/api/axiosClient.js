@@ -2,12 +2,12 @@ import axios from 'axios';
 
 const axiosClient = axios.create({
   baseURL: 'http://localhost:3000/FoodO/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  // headers: {
+  //   'Content-Type': 'application/json'
+  // }
 });
 
-// Add JWT token to all requests
+
 axiosClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -19,7 +19,6 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Extract response data and handle errors
 axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {

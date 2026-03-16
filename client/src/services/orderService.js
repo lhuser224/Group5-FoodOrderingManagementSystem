@@ -9,11 +9,11 @@ export const createOrder = async (orderData) => {
     const payload = {
       user_id: orderData.user_id,
       shop_id: orderData.shop_id,
-      total_price: parseFloat(orderData.total_price), // Ensure decimal type
+      total_price: parseFloat(orderData.total_price), 
       items: orderData.items.map(item => ({
         food_id: item.food_id,
         quantity: item.quantity,
-        selected_options: JSON.stringify(item.selected_options || {}) // Ensure JSON string
+        selected_options: JSON.stringify(item.selected_options || {}) 
       })),
       user_details: {
         full_name: orderData.user_details.full_name,
@@ -31,11 +31,6 @@ export const createOrder = async (orderData) => {
   }
 };
 
-/**
- * Get order history for a user
- * @param {number} userId - User ID
- * @returns {Promise<Array>} Array of user's orders
- */
 export const getOrderHistory = async (userId) => {
   try {
     if (!userId) {
@@ -50,11 +45,6 @@ export const getOrderHistory = async (userId) => {
   }
 };
 
-/**
- * Get a single order by ID
- * @param {number} orderId - Order ID
- * @returns {Promise<Object>} Order details
- */
 export const getOrderById = async (orderId) => {
   try {
     if (!orderId) {
@@ -69,15 +59,7 @@ export const getOrderById = async (orderId) => {
   }
 };
 
-/**
- * Cancel an order
- * Updates order status and stores cancellation reason
- * Also dispatches to Context API for real-time UI update
- * @param {number} orderId - Order ID
- * @param {string} reason - Cancellation reason
- * @param {Function} dispatchContext - Optional Context dispatch function for cancelling in Context
- * @returns {Promise<Object>} Updated order
- */
+
 export const cancelOrder = async (orderId, reason, dispatchContext) => {
   try {
     if (!orderId || !reason) {
@@ -93,7 +75,6 @@ export const cancelOrder = async (orderId, reason, dispatchContext) => {
       payload
     );
 
-    // Optionally dispatch to Context if function provided
     if (dispatchContext) {
       dispatchContext({
         type: 'CANCEL_ORDER',
@@ -108,13 +89,6 @@ export const cancelOrder = async (orderId, reason, dispatchContext) => {
   }
 };
 
-/**
- * Update order status
- * @param {number} orderId - Order ID
- * @param {string} status - New status (e.g., 'Confirmed', 'Shipped', 'Delivered')
- * @param {Function} dispatchContext - Optional Context dispatch function for updating in Context
- * @returns {Promise<Object>} Updated order
- */
 export const updateOrderStatus = async (orderId, status, dispatchContext) => {
   try {
     if (!orderId || !status) {
@@ -143,11 +117,6 @@ export const updateOrderStatus = async (orderId, status, dispatchContext) => {
   }
 };
 
-/**
- * Get order statistics for a user
- * @param {number} userId - User ID
- * @returns {Promise<Object>} { total_orders, total_spent, recent_orders }
- */
 export const getOrderStats = async (userId) => {
   try {
     const response = await axiosClient.get(`/orders/stats/${userId}`);
