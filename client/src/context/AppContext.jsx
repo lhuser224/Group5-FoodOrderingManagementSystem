@@ -70,7 +70,9 @@ function appReducer(state, action) {
 }
 
 export function AppProvider({ children }) {
+  console.log('✅ AppProvider initializing...');
   const [state, dispatch] = useReducer(appReducer, initialState);
+  console.log('✅ AppProvider state:', state);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

@@ -618,3 +618,32 @@
     transform: translateY(0);
   }
 }
+
+/* RESPONSIVE MOBILE */
+@media (max-width: 768px) {
+  .mainContentArea {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .sidebarWireframe {
+    width: 100%;
+    position: static;
+    sticky: none;
+    top: auto;
+  }
+
+  .gridV2 {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+  }
+
+  .heroTitle {
+    font-size: 1.8rem;
+  }
+
+  .modalContent {
+    width: 90%;
+    max-width: 400px;
+  }
+}

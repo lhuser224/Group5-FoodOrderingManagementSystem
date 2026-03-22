@@ -69,14 +69,15 @@ export default function Checkout() {
 
       const orderPayload = {
         shop_id: 1,
-        total_price: total + 2, // Gồm cả phí vận chuyển
+        total_price: total + 2,
         items: orderItems,
         customer_info: formData
       };
 
       const response = await createOrder(orderPayload);
 
-      setOrderId(response.data?.id || '#ORD-' + Math.floor(100000 + Math.random() * 900000));
+      const newOrderId = response.data?.id || '#ORD-' + Math.floor(100000 + Math.random() * 900000);
+      setOrderId(newOrderId);
       setShowSuccess(true);
       dispatch({ type: 'CLEAR_CART' });
       
@@ -98,39 +99,38 @@ export default function Checkout() {
       <div className={`container ${styles.checkoutLayout}`}>
         <div className={styles.checkoutForm}>
           <h2>Thông tin giao hàng</h2>
-          <div className={styles.formGroup}>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Họ tên"
-              id="name"
-              value={formData.name}
-              onChange={handleInputChange}
-            />
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Địa chỉ"
-              id="address"
-              value={formData.address}
-              onChange={handleInputChange}
-            />
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Số điện thoại"
-              id="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-            />
-            <textarea 
-              id="note"
-              className="form-control" 
-              placeholder="Ghi chú thêm (vị trí, yêu cầu đặc biệt...)"
-              value={formData.note}
-              onChange={handleInputChange}
-            ></textarea>
-          </div>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Họ tên"
+            id="name"
+            value={formData.name}
+            onChange={handleInputChange}
+          />
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Địa chỉ"
+            id="address"
+            value={formData.address}
+            onChange={handleInputChange}
+          />
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Số điện thoại"
+            id="phone"
+            value={formData.phone}
+            onChange={handleInputChange}
+          />
+          <textarea 
+            id="note"
+            className="form-control" 
+            placeholder="Ghi chú..."
+            value={formData.note}
+            onChange={handleInputChange}
+            style={{ resize: 'vertical' }}
+          ></textarea>
         </div>
 
         <div className={styles.orderSummary}>
@@ -138,19 +138,15 @@ export default function Checkout() {
 
           <div className={styles.cartItemsList}>
             {cart.length === 0 ? (
-              <p className={styles.emptyMsg}>Giỏ hàng đang trống</p>
+              <p style={{ color: '#777', fontStyle: 'italic' }}>Giỏ hàng đang trống</p>
             ) : (
               cart.map((item, index) => (
-                <div key={index} className={styles.cartItem}>
-                  <div className={styles.cartItemInfo}>
+                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #eee', padding: '10px 0' }}>
+                  <div>
                     <strong>{item.name}</strong>
-                    <div className={styles.meta}>Size {item.size || 'M'} {item.extras?.length > 0 && `+ ${item.extras.join(', ')}`}</div>
-                    <div className={styles.priceRow}>
-                      <span>x{item.quantity}</span>
-                      <span>${(item.totalPrice || item.price * item.quantity).toFixed(2)}</span>
-                    </div>
+                    <div style={{ fontSize: '0.9rem', color: '#555' }}>${item.price?.toFixed(2)}</div>
                   </div>
-                  <button className={styles.btnRemove} onClick={() => handleRemoveItem(index)}>
+                  <button className={styles.btnRemove} onClick={() => handleRemoveItem(index)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer' }}>
                     <i className="fa-solid fa-trash"></i>
                   </button>
                 </div>
@@ -158,45 +154,47 @@ export default function Checkout() {
             )}
           </div>
 
-          <hr />
-
-          <div className={styles.summaryDetails}>
-            <div className={styles.summaryRow}>
-              <span>Tạm tính:</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-            <div className={styles.summaryRow}>
-              <span>Phí vận chuyển:</span>
-              <span>$2.00</span>
-            </div>
-          </div>
-
-          <div className={styles.totalRow}>
-            <span>Tổng cộng:</span>
-            <span className={styles.totalPrice}>${(total + 2).toFixed(2)}</span>
+          <div style={{ borderTop: '2px solid #eee', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold', marginTop: '15px' }}>
+            <span>Tổng tiền:</span>
+            <span style={{ color: '#ee4d2d' }}>${total.toFixed(2)}</span>
           </div>
 
           <button
             className="btn btn-success w-100 mt-20"
             onClick={handleCheckout}
             disabled={loading || cart.length === 0}
+            style={{ background: '#ee4d2d', border: 'none', padding: '12px', borderRadius: '6px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
           >
-            {loading ? 'Đang xử lý...' : 'Xác nhận đặt hàng'}
+            {loading ? 'Đang xử lý...' : 'Đặt hàng ngay'}
           </button>
+          
+          {cart.length === 0 && (
+            <button 
+              className="btn btn-secondary w-100 mt-20"
+              onClick={() => navigate('/')}
+              style={{ padding: '12px', borderRadius: '6px' }}
+            >
+              Quay lại chọn món
+            </button>
+          )}
         </div>
       </div>
 
       {showSuccess && (
-        <div className={styles.successModal}>
-          <div className={styles.successContent}>
-            <div className={styles.successIcon}>
+        <div className={styles.successModal} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '40px', textAlign: 'center', maxWidth: '400px' }}>
+            <div style={{ fontSize: '3rem', color: '#4caf50', marginBottom: '20px' }}>
               <i className="fa-solid fa-circle-check"></i>
             </div>
-            <h2>Đặt hàng thành công!</h2>
-            <p>Mã đơn hàng: <strong>{orderId}</strong></p>
-            <p>Đang chuyển hướng đến lịch sử đơn hàng...</p>
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/')}>
-              Về trang chủ ngay
+            <h2>Order Confirmed!</h2>
+            <p>Your order has been placed successfully.</p>
+            <p style={{ fontSize: '1.1rem', color: '#666', marginBottom: '20px' }}>Order ID: <strong>{orderId}</strong></p>
+            <button 
+              className="btn btn-primary"
+              onClick={() => navigate('/')}
+              style={{ background: '#ee4d2d', border: 'none', padding: '12px 30px', borderRadius: '6px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              Return to Menu
             </button>
           </div>
         </div>

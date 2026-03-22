@@ -238,3 +238,48 @@
 /* Animations */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  .checkoutLayout {
+    flex-direction: column;
+    gap: 20px;
+    margin: 20px auto;
+    padding: 0 15px 30px;
+  }
+
+  .checkoutForm {
+    flex: 1;
+  }
+
+  .orderSummary {
+    flex: 1;
+    position: static;
+    top: auto;
+  }
+
+  .successContent {
+    min-width: 85%;
+    max-width: 350px;
+  }
+}
+
+@media (max-width: 480px) {
+  .checkoutForm h2,
+  .orderSummary h3 {
+    font-size: 1.2rem;
+  }
+
+  .checkoutForm {
+    padding: 20px;
+  }
+
+  .orderSummary {
+    padding: 20px;
+  }
+
+  .successContent {
+    padding: 30px 20px;
+    min-width: 90%;
+  }
+}

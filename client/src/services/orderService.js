@@ -145,6 +145,19 @@ export const calculateSubtotal = (items) => {
   }, 0);
 };
 
+export const getShopOrders = async (shopId) => {
+  try {
+    if (!shopId) {
+      throw new Error('shopId is required');
+    }
+    const response = await axiosClient.get(`/orders/shop/${shopId}`);
+    return response;
+  } catch (error) {
+    console.error('Error fetching shop orders:', error);
+    throw error;
+  }
+};
+
 export default {
   createOrder,
   getOrderHistory,
@@ -152,5 +165,6 @@ export default {
   cancelOrder,
   updateOrderStatus,
   getOrderStats,
-  calculateSubtotal
+  calculateSubtotal,
+  getShopOrders
 };
