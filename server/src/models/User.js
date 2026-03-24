@@ -35,16 +35,18 @@ const User = {
   },
 
   async update(id, updateData) {
+    const keys = Object.keys(updateData);
+    if (keys.length === 0) return this.findById(id); 
+
     const fields = [];
     const values = [];
     
-    Object.keys(updateData).forEach(key => {
+    keys.forEach(key => {
       fields.push(`${key} = ?`);
       values.push(updateData[key]);
     });
     
     values.push(id);
-    
     const query = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
     await db.query(query, values);
     
