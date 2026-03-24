@@ -3,9 +3,13 @@ const shopService = require('../services/shopService');
 const shopController = {
   async getAll(req, res) {
     try {
-      const { search } = req.query;
+      const { search, is_active } = req.query;
+      const filterActive = is_active === 'false' ? false : (is_active === 'true' ? true : undefined);
 
-      const result = await shopService.getAll({ search });
+      const result = await shopService.getAll({ 
+        search, 
+        is_active: filterActive 
+      });
 
       res.status(200).json({
         success: true,
@@ -24,7 +28,6 @@ const shopController = {
   async getById(req, res) {
     try {
       const { id } = req.params;
-
       const result = await shopService.getById(parseInt(id));
 
       res.status(200).json({
@@ -40,7 +43,6 @@ const shopController = {
           data: null
         });
       }
-
       res.status(500).json({
         success: false,
         message: error.message,
@@ -51,14 +53,7 @@ const shopController = {
 
   async create(req, res) {
     try {
-      const { shop_name, address, phone, email } = req.body;
-
-      const result = await shopService.create({
-        shop_name,
-        address,
-        phone,
-        email
-      });
+      const result = await shopService.create(req.user.id, req.body);
 
       res.status(201).json({
         success: true,
@@ -74,12 +69,36 @@ const shopController = {
     }
   },
 
+  async approve(req, res) {
+    try {
+      const { id } = req.params;
+      const result = await shopService.approve(parseInt(id));
+
+      res.status(200).json({
+        success: true,
+        message: 'Shop approved successfully',
+        data: result
+      });
+    } catch (error) {
+      if (error.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+          data: null
+        });
+      }
+      res.status(400).json({
+        success: false,
+        message: error.message,
+        data: null
+      });
+    }
+  },
+
   async update(req, res) {
     try {
       const { id } = req.params;
-      const updateData = req.body;
-
-      const result = await shopService.update(parseInt(id), updateData);
+      const result = await shopService.update(parseInt(id), req.body);
 
       res.status(200).json({
         success: true,
@@ -94,7 +113,6 @@ const shopController = {
           data: null
         });
       }
-
       res.status(400).json({
         success: false,
         message: error.message,
@@ -106,7 +124,6 @@ const shopController = {
   async delete(req, res) {
     try {
       const { id } = req.params;
-
       await shopService.delete(parseInt(id));
 
       res.status(200).json({
@@ -122,7 +139,6 @@ const shopController = {
           data: null
         });
       }
-
       res.status(500).json({
         success: false,
         message: error.message,

@@ -6,6 +6,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const shopRoutes = require('./routes/shopRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const cartRoutes = require('./routes/cartRoutes');
+const optionRoutes = require('./routes/optionRoutes');
 
 const app = express();
 
@@ -20,6 +21,7 @@ foodORouter.use('/orders', orderRoutes);
 foodORouter.use('/shops', shopRoutes);
 foodORouter.use('/categories', categoryRoutes);
 foodORouter.use('/cart', cartRoutes);
+foodORouter.use('/options', optionRoutes);
 
 foodORouter.get('/health', (req, res) => {
   res.status(200).json({
