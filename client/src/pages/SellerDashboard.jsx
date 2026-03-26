@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 import { getFoods, addFood, toggleFoodStatus } from '../services/foodService';
 import { getShopOrders, updateOrderStatus } from '../services/orderService';
 import styles from './SellerDashboard.module.css';

@@ -1,4 +1,5 @@
 const Shop = require('../models/Shop');
+const User = require('../models/User');
 
 const shopService = {
   async getAll(filters = {}) {
@@ -25,7 +26,11 @@ const shopService = {
   async approve(id) {
     const shop = await Shop.findById(id);
     if (!shop) throw new Error('Shop not found');
-    return await Shop.approve(id);
+    
+    await Shop.approve(id);
+    await User.update(shop.user_id, { role: 'seller' });
+    
+    return await Shop.findById(id);
   },
 
   async delete(id) {

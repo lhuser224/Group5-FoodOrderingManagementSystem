@@ -2,9 +2,13 @@ const db = require('../config/db');
 
 const Shop = {
   async findAll(filters = {}) {
-    const isActiveFilter = filters.is_active !== undefined ? filters.is_active : true;
-    let query = 'SELECT * FROM shops WHERE is_active = ?';
-    const params = [isActiveFilter];
+    let query = 'SELECT * FROM shops WHERE 1=1';
+    const params = [];
+
+    if (filters.is_active !== undefined) {
+      query += ' AND is_active = ?';
+      params.push(filters.is_active);
+    }
 
     if (filters.search) {
       query += ' AND shop_name LIKE ?';
@@ -27,21 +31,15 @@ const Shop = {
 
   async create(shopData) {
     const { 
-      user_id, 
-      shop_name, 
-      shop_address, 
-      image_url, 
-      latitude, 
-      longitude, 
-      phone, 
-      email 
+      user_id, shop_name, province, district, ward, 
+      shop_address, image_url 
     } = shopData;
 
     const [result] = await db.query(
       `INSERT INTO shops 
-      (user_id, shop_name, shop_address, image_url, latitude, longitude, phone, email, is_active) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, shop_name, shop_address || '', image_url || '', latitude || null, longitude || null, phone || '', email || '', false]
+      (user_id, shop_name, province, district, ward, shop_address, image_url, is_active) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [user_id, shop_name, province, district, ward, shop_address, image_url || '', false]
     );
     return this.findById(result.insertId);
   },

@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 import { getOrderHistory, cancelOrder } from '../services/orderService';
 import styles from './History.module.css';
 
-// Tách Component Modal để dễ quản lý
 function CancelModal({ isOpen, onClose, onConfirm, orderId }) {
   const [reason, setReason] = useState('');
 
@@ -131,7 +129,6 @@ export default function History() {
 
   return (
     <>
-      <Navbar />
       <div className={`container ${styles.mainContentArea}`}>
         <h2 className={styles.pageTitle}>Lịch sử đơn hàng</h2>
         

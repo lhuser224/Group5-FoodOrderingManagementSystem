@@ -1,6 +1,5 @@
 import { useState, useContext, useEffect, useCallback } from 'react';
 import { AppContext } from '../context/AppContext';
-import Navbar from '../components/Navbar';
 import { getFoods, searchFoods } from '../services/foodService';
 import styles from './Home.module.css';
 
@@ -124,7 +123,7 @@ export default function Home() {
       const data = res?.data || res || [];
       setFoods(data.length > 0 ? data : (state.products || []));
     } catch (error) {
-      console.error('❌ Lỗi tải dữ liệu:', error);
+      console.error('Lỗi tải dữ liệu:', error);
       setFoods(state.products || []);
     } finally {
       setLoading(false);
@@ -163,7 +162,6 @@ export default function Home() {
 
   return (
     <div className={styles.homeLayout}>
-      <Navbar />
       <div className={styles.heroWrapper}>
         <div className={styles.heroOverlay}></div>
         <div className={styles.heroContainer}>

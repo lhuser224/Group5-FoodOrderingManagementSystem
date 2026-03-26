@@ -1,7 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import Navbar from '../components/Navbar';
 import { createOrder } from '../services/orderService';
 import styles from './Checkout.module.css';
 
@@ -93,9 +92,7 @@ export default function Checkout() {
   };
 
   return (
-    <>
-      <Navbar />
-
+    <>      
       <div className={`container ${styles.checkoutLayout}`}>
         <div className={styles.checkoutForm}>
           <h2>Thông tin giao hàng</h2>

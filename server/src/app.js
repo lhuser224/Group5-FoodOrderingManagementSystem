@@ -1,4 +1,5 @@
 const cors = require('cors');
+const path = require('path');
 const express = require('express');
 const authRoutes = require('./routes/authRoutes');
 const foodRoutes = require('./routes/foodRoutes');
@@ -12,7 +13,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const foodORouter = express.Router();
 
 foodORouter.use('/auth', authRoutes);

@@ -76,6 +76,39 @@ const authController = {
         data: null
       });
     }
+  },
+
+  async getByUserId(req, res) {
+    try {
+      const userId = req.user.id;
+      const result = await orderService.getByUserId(userId); 
+
+      res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+  
+  async handleUpdateProfile(req, res) {
+    try {
+      const result = await authService.updateProfile(req.user.id, req.body);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  async handleChangePassword(req, res) {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      await authService.changePassword(req.user.id, oldPassword, newPassword);
+      res.status(200).json({ success: true, message: "Đổi mật khẩu thành công!" });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
   }
 };
 

@@ -59,6 +59,34 @@ const authService = {
       },
       token
     };
+  },
+
+  async updateProfile(userId, updateData) {
+    const allowedFields = ['full_name', 'phone'];
+    const filteredData = {};
+    
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        filteredData[field] = updateData[field];
+      }
+    });
+
+    if (Object.keys(filteredData).length === 0) return await userModel.findById(userId);
+
+    return await userModel.update(userId, filteredData);
+  },
+
+  async changePassword(userId, oldPassword, newPassword) {
+    const user = await userModel.findById(userId);
+    if (!user) throw new Error('Người dùng không tồn tại');
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    
+    if (!isMatch) throw new Error('Mật khẩu cũ không chính xác');
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    
+    return await userModel.update(userId, { password: hashedNewPassword });
   }
 };
 

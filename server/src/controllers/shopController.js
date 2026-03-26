@@ -17,11 +17,7 @@ const shopController = {
         data: result
       });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message,
-        data: null
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
 
@@ -29,69 +25,38 @@ const shopController = {
     try {
       const { id } = req.params;
       const result = await shopService.getById(parseInt(id));
-
-      res.status(200).json({
-        success: true,
-        message: 'Shop retrieved successfully',
-        data: result
-      });
+      res.status(200).json({ success: true, data: result });
     } catch (error) {
-      if (error.message.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-          data: null
-        });
-      }
-      res.status(500).json({
-        success: false,
-        message: error.message,
-        data: null
-      });
+      res.status(error.message.includes('not found') ? 404 : 500).json({ success: false, message: error.message });
     }
   },
 
   async create(req, res) {
     try {
-      const result = await shopService.create(req.user.id, req.body);
+        const shopData = {
+            ...req.body,
+            user_id: req.user.id,
+            image_url: req.file ? `/uploads/${req.file.filename}` : null
+        };
 
-      res.status(201).json({
-        success: true,
-        message: 'Shop created successfully',
-        data: result
-      });
+        const newShop = await shopService.create(shopData);
+        res.status(201).json({ success: true, data: newShop });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        message: error.message,
-        data: null
-      });
+        res.status(400).json({ success: false, message: error.message });
     }
-  },
+},
 
   async approve(req, res) {
     try {
       const { id } = req.params;
       const result = await shopService.approve(parseInt(id));
-
       res.status(200).json({
         success: true,
-        message: 'Shop approved successfully',
+        message: 'Shop approved and user promoted to seller',
         data: result
       });
     } catch (error) {
-      if (error.message.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-          data: null
-        });
-      }
-      res.status(400).json({
-        success: false,
-        message: error.message,
-        data: null
-      });
+      res.status(error.message.includes('not found') ? 404 : 400).json({ success: false, message: error.message });
     }
   },
 
@@ -99,25 +64,9 @@ const shopController = {
     try {
       const { id } = req.params;
       const result = await shopService.update(parseInt(id), req.body);
-
-      res.status(200).json({
-        success: true,
-        message: 'Shop updated successfully',
-        data: result
-      });
+      res.status(200).json({ success: true, data: result });
     } catch (error) {
-      if (error.message.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-          data: null
-        });
-      }
-      res.status(400).json({
-        success: false,
-        message: error.message,
-        data: null
-      });
+      res.status(error.message.includes('not found') ? 404 : 400).json({ success: false, message: error.message });
     }
   },
 
@@ -125,25 +74,9 @@ const shopController = {
     try {
       const { id } = req.params;
       await shopService.delete(parseInt(id));
-
-      res.status(200).json({
-        success: true,
-        message: 'Shop deleted successfully',
-        data: null
-      });
+      res.status(200).json({ success: true, message: 'Shop deleted successfully' });
     } catch (error) {
-      if (error.message.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-          data: null
-        });
-      }
-      res.status(500).json({
-        success: false,
-        message: error.message,
-        data: null
-      });
+      res.status(error.message.includes('not found') ? 404 : 500).json({ success: false, message: error.message });
     }
   }
 };

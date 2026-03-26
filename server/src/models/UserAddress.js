@@ -1,9 +1,19 @@
 const db = require('../config/db');
 
 const UserAddress = {
-    async create(data) {
-    const { user_id, receiver_name, receiver_phone, address_detail, latitude, longitude, is_default } = data;
-    const existingAddresses = await this.findByUser(user_id);    
+  async create(data) {
+    const { 
+      user_id, 
+      receiver_name, 
+      receiver_phone, 
+      province, 
+      district, 
+      ward, 
+      address_detail, 
+      is_default 
+    } = data;
+
+    const existingAddresses = await this.findByUser(user_id);
     let finalIsDefault = false;
 
     if (existingAddresses.length === 0) {
@@ -19,9 +29,18 @@ const UserAddress = {
     }
     const [result] = await db.query(
       `INSERT INTO user_addresses 
-      (user_id, receiver_name, receiver_phone, address_detail, latitude, longitude, is_default)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, receiver_name, receiver_phone, address_detail, latitude, longitude, finalIsDefault]
+      (user_id, receiver_name, receiver_phone, province, district, ward, address_detail, is_default)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        user_id, 
+        receiver_name, 
+        receiver_phone, 
+        province, 
+        district, 
+        ward, 
+        address_detail, 
+        finalIsDefault
+      ]
     );
 
     return this.findById(result.insertId);
