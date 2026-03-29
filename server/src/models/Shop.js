@@ -23,6 +23,19 @@ const Shop = {
     const [rows] = await db.query(query, params);
     return rows;
   },
+    async getByUserId(userId) {
+    const [rows] = await db.query('SELECT * FROM shops WHERE user_id = ?', [userId]);
+    return rows[0];
+  },
+
+  async toggleOpenStatus(shopId) {
+    // Đảo ngược giá trị is_open hiện tại
+    const [result] = await db.query(
+        'UPDATE shops SET is_open = NOT is_open WHERE id = ?', 
+        [shopId]
+    );
+    return result;
+  },
 
   async findById(id) {
     const [rows] = await db.query('SELECT * FROM shops WHERE id = ?', [id]);
@@ -37,9 +50,9 @@ const Shop = {
 
     const [result] = await db.query(
       `INSERT INTO shops 
-      (user_id, shop_name, province, district, ward, shop_address, image_url, is_active) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, shop_name, province, district, ward, shop_address, image_url || '', false]
+      (user_id, shop_name, province, district, ward, shop_address, image_url, is_active, is_open) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [user_id, shop_name, province, district, ward, shop_address, image_url || '', false, true]
     );
     return this.findById(result.insertId);
   },

@@ -39,7 +39,7 @@ const authMiddleware = {
   },
 
   isSeller: (req, res, next) => {
-    if (req.user.role !== 'seller') {
+    if (req.user.role !== 'shop_owner') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Seller role required',

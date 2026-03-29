@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axiosClient from '../api/axiosClient';
+import { registerShop } from '../services/shopService'; 
 import AddressSelector from '../components/AddressSelector';
 
 const SellerRegistration = () => {
@@ -12,6 +12,9 @@ const SellerRegistration = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Cleanup function: Giải phóng bộ nhớ từ đường dẫn tạm (Object URL) 
+  // khi ảnh preview thay đổi hoặc khi component bị gỡ bỏ (unmount).
+  // Giúp tránh hiện tượng rò rỉ bộ nhớ (Memory Leak).
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview);
@@ -41,7 +44,6 @@ const SellerRegistration = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     if (!addressData.province || !addressData.district || !addressData.ward) {
       setError("Vui lòng chọn đầy đủ Tỉnh/Huyện/Xã");
       setLoading(false);
@@ -54,25 +56,24 @@ const SellerRegistration = () => {
       return;
     }
 
+    // Khởi tạo FormData để gửi cả file và text
     const data = new FormData();
     data.append('shop_name', shopName);
     data.append('province', addressData.province);
     data.append('district', addressData.district);
     data.append('ward', addressData.ward);
-    data.append('shop_address', addressData.detail);
+    data.append('shop_address', addressData.detail || '');
     data.append('license_image', file);
 
     try {
-      const response = await axiosClient.post('/shops', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const res = await registerShop(data);
 
-      if (response.data.success) {
+      if (res.success) {
         alert('Gửi yêu cầu thành công! Vui lòng chờ Admin phê duyệt hồ sơ.');
         navigate('/');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Có lỗi xảy ra khi gửi yêu cầu');
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi gửi yêu cầu đăng ký');
     } finally {
       setLoading(false);
     }
@@ -84,22 +85,24 @@ const SellerRegistration = () => {
         <div className="col-md-8 col-lg-7">
           <div className="card shadow-sm border-0">
             <div className="card-body p-4 p-md-5">
-              <h2 className="text-center mb-1 fw-bold text-primary">Đăng ký đối tác</h2>
-              <p className="text-center text-muted mb-4">Cung cấp thông tin để mở cửa hàng trên FoodO</p>
+              <div className="text-center mb-4">
+                <h2 className="fw-bold text-primary">Đăng ký đối tác</h2>
+                <p className="text-muted">Cung cấp thông tin để mở cửa hàng trên FoodO</p>
+              </div>
               
               {error && (
-                <div className="alert alert-danger shadow-sm" role="alert">
-                  <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                  {error}
+                <div className="alert alert-danger d-flex align-items-center" role="alert">
+                  <i className="fa-solid fa-circle-exclamation me-2"></i>
+                  <div>{error}</div>
                 </div>
               )}
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                  <label className="form-label fw-semibold">Tên cửa hàng <span className="text-danger">*</span></label>
+                  <label className="form-label fw-semibold small">Tên cửa hàng <span className="text-danger">*</span></label>
                   <input
                     type="text"
-                    className="form-control form-control-lg"
+                    className="form-control form-control-lg border-2"
                     value={shopName}
                     onChange={(e) => setShopName(e.target.value)}
                     required
@@ -108,46 +111,47 @@ const SellerRegistration = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="form-label fw-semibold">Địa chỉ kinh doanh <span className="text-danger">*</span></label>
+                  <label className="form-label fw-semibold small">Địa chỉ kinh doanh <span className="text-danger">*</span></label>
                   <AddressSelector onAddressChange={(data) => setAddressData(data)} />
                 </div>
 
                 <div className="mb-4">
-                  <label className="form-label fw-semibold">Giấy phép kinh doanh / Xác nhận VSATTP <span className="text-danger">*</span></label>
-                  <div className={`card p-3 bg-light ${error && !file ? 'border-danger' : ''}`}>
+                  <label className="form-label fw-semibold small">Giấy phép kinh doanh / VSATTP <span className="text-danger">*</span></label>
+                  <div className={`card p-3 bg-light border-dashed ${error && !file ? 'border-danger' : ''}`}>
                     <input
                       type="file"
-                      className="form-control form-control-sm"
-                      accept="image/jpeg,image/png,image/jpg"
+                      className="form-control"
+                      accept="image/*"
                       onChange={handleFileChange}
                       required
                     />
-                    <div className="form-text text-muted small mt-1">
-                      Chấp nhận file: JPG, PNG, JPEG (Tối đa 5MB).
-                    </div>
+                    <div className="form-text small mt-2">Định dạng hỗ trợ: JPG, PNG (Max 5MB)</div>
+                    
                     {preview && (
-                      <div className="mt-3 text-center border rounded p-2 bg-white shadow-sm">
-                        <p className="text-success small mb-1 fw-medium">Đã chọn file: {file.name}</p>
+                      <div className="mt-3 text-center bg-white p-2 rounded border shadow-sm">
                         <img 
                           src={preview} 
-                          alt="Preview" 
-                          className="rounded" 
-                          style={{ maxWidth: '100%', maxHeight: '250px', objectFit: 'contain' }} 
+                          alt="Giấy phép kinh doanh preview" 
+                          className="img-fluid rounded" 
+                          style={{ maxHeight: '200px' }} 
                         />
                       </div>
                     )}
                   </div>
                 </div>
 
-                <hr className="my-4 text-secondary opacity-25" />
+                <hr className="my-4 opacity-25" />
 
                 <button
                   type="submit"
-                  className="btn btn-primary w-100 py-3 fw-bold shadow-sm"
+                  className="btn btn-primary btn-lg w-100 fw-bold shadow-sm"
                   disabled={loading}
                 >
                   {loading ? (
-                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2"></span>
+                      Đang xử lý...
+                    </>
                   ) : "Gửi hồ sơ đăng ký"}
                 </button>
               </form>

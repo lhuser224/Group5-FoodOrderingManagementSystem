@@ -1,309 +1,170 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getFoods, addFood, toggleFoodStatus } from '../services/foodService';
-import { getShopOrders, updateOrderStatus } from '../services/orderService';
-import styles from './SellerDashboard.module.css';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { getFoodsByShop, toggleFoodStatus, deleteFood, addFood, updateFood } from '../services/foodService';
+import axiosClient from '../api/axiosClient';
 
-export default function SellerDashboard() {
-  const navigate = useNavigate();
-  const [shopId] = useState(localStorage.getItem('shopId') || 1);
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('foods');
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [alertMsg, setAlertMsg] = useState('');
-  const [alertType, setAlertType] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    image_url: ''
-  });
+export default function ShopDashboard() {
+  const { user } = useAuth();
+  const [foods, setFoods] = useState([]);
+  const [shop, setShop] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  const [showModal, setShowModal] = useState(false);
+  const [currentFood, setCurrentFood] = useState(null); 
+  const [formData, setFormData] = useState({ name: '', price: '', image_url: '', category_id: 1, description: '' });
 
+  // 1. Lấy thông tin Shop trước để có shopId chuẩn
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/auth');
-      return;
-    }
-    loadData();
-  }, [navigate, activeTab]);
+    const fetchShopInfo = async () => {
+      try {
+        const res = await axiosClient.get('/FoodO/shops/me/info'); // Khớp với route /me/info của ông
+        if (res.success) {
+          setShop(res.data);
+          loadFoods(res.data.id);
+        }
+      } catch (err) { console.error("Lỗi lấy thông tin shop:", err); }
+    };
+    fetchShopInfo();
+  }, []);
 
-  const loadData = async () => {
+  const loadFoods = async (sId) => {
+    try {
+      const res = await getFoodsByShop(sId);
+      if (res.success) setFoods(res.data);
+    } catch (err) { console.error("Lỗi lấy danh sách món:", err); }
+  };
+
+  const handleToggle = async (id) => {
+    try {
+      await toggleFoodStatus(id);
+      loadFoods(shop.id);
+    } catch (err) { alert("Không thể cập nhật trạng thái"); }
+  };
+
+  const handleDelete = async (foodId) => {
+    if (window.confirm("Xóa món này nhé?")) {
+      try {
+        await deleteFood(shop.id, foodId);
+        setFoods(foods.filter(f => f.id !== foodId));
+      } catch (err) { alert("Lỗi khi xóa món"); }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
       setLoading(true);
-      if (activeTab === 'foods') {
-        const foodData = await getFoods(shopId);
-        setProducts(foodData.data || []);
+      if (currentFood) {
+        await updateFood(shop.id, currentFood.id, formData);
       } else {
-        const orderData = await getShopOrders(shopId);
-        setOrders(orderData.data || []);
+        await addFood(shop.id, formData);
       }
-    } catch (error) {
-      console.error('Load error:', error);
-      showAlert('Không thể kết nối đến Database!', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggleFoodStatus = async (foodId) => {
-    try {
-      await toggleFoodStatus(shopId, foodId);
-      showAlert('Cập nhật thành công!', 'success');
-      loadData();
-    } catch (error) {
-      console.error('Error:', error);
-      showAlert('Lỗi: Không thể cập nhật!', 'error');
-    }
-  };
-
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
-    try {
-      await updateOrderStatus(orderId, newStatus);
-      showAlert('Cập nhật đơn hàng thành công!', 'success');
-      loadData();
-    } catch (error) {
-      console.error('Error:', error);
-      showAlert('Lỗi: Không thể cập nhật đơn hàng!', 'error');
-    }
-  };
-
-  const showAlert = (msg, type) => {
-    setAlertMsg(msg);
-    setAlertType(type);
-    setTimeout(() => {
-      setAlertMsg('');
-      setAlertType('');
-    }, 3000);
-  };
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleSubmitFood = async () => {
-    if (!formData.name || !formData.price) {
-      showAlert('Vui lòng nhập đầy đủ tên và giá!', 'error');
-      return;
-    }
-
-    try {
-      await addFood(shopId, {
-        name: formData.name,
-        price: parseFloat(formData.price),
-        image_url: formData.image_url,
-        category_id: 1
-      });
-      showAlert('Thêm món thành công!', 'success');
-      setShowForm(false);
-      setFormData({ name: '', price: '', image_url: '' });
-      loadData();
-    } catch (error) {
-      console.error('Error:', error);
-      showAlert('Lỗi: Không thể thêm món ăn!', 'error');
-    }
+      setShowModal(false);
+      loadFoods(shop.id);
+      setFormData({ name: '', price: '', image_url: '', category_id: 1, description: '' });
+    } catch (err) { alert("Lỗi khi lưu món ăn"); } 
+    finally { setLoading(false); }
   };
 
   return (
-    <div className={styles.dashboardWrapper}>
-      <Navbar />
-      
-      <div className={styles.dashboardContainer}>
-        <aside className={styles.sidebar}>
-          <h3 className={styles.sidebarTitle}>Quản lý Cửa hàng #{shopId}</h3>
-          <button 
-            onClick={() => setShowForm(!showForm)}
-            className={styles.sidebarButton}
-          >
-            <i className="fa-solid fa-plus"></i> Thêm món mới
-          </button>
-          <p className={styles.sidebarInfo}>Sản phẩm: <strong>{products.length}</strong></p>
-
-          <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-            <button 
-              onClick={() => setActiveTab('foods')}
-              className={`${styles.tabButton} ${activeTab === 'foods' ? styles.active : ''}`}
-            >
-              <i className="fa-solid fa-utensils"></i> Danh sách món
-            </button>
-            <button 
-              onClick={() => setActiveTab('orders')}
-              className={`${styles.tabButton} ${activeTab === 'orders' ? styles.active : ''}`}
-            >
-              <i className="fa-solid fa-receipt"></i> Đơn hàng
-            </button>
-          </div>
-        </aside>
-
-        <main className={styles.mainContent}>
-          {alertMsg && (
-            <div className={`${styles.alert} ${alertType === 'error' ? styles.alertError : ''}`}>
-              {alertMsg}
-            </div>
-          )}
-
-          {activeTab === 'foods' && (
-            <div>
-              {showForm && (
-                <div className={styles.formContainer}>
-                  <h3>Thêm món ăn mới</h3>
-                  <input
-                    type="text"
-                    id="name"
-                    placeholder="Tên món ăn"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                  />
-                  <input
-                    type="number"
-                    id="price"
-                    placeholder="Giá"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                  />
-                  <input
-                    type="text"
-                    id="image_url"
-                    placeholder="URL hình ảnh"
-                    value={formData.image_url}
-                    onChange={handleInputChange}
-                  />
-                  <div className={styles.formActions}>
-                    <button className={styles.btnCancel} onClick={() => setShowForm(false)}>
-                      Đóng
-                    </button>
-                    <button className={styles.btnSave} onClick={handleSubmitFood}>
-                      Lưu
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginBottom: '20px' }}>
-                <h3>Thực đơn từ Database</h3>
-              </div>
-
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Đang tải dữ liệu...</div>
-              ) : (
-                <div className={styles.gridV2}>
-                  {products.length > 0 ? (
-                    products.map((food) => (
-                      <div key={food.id} className={styles.cardV2}>
-                        <div className={styles.cardThumb}>
-                          {food.image_url ? (
-                            <img src={food.image_url} alt={food.name} />
-                          ) : (
-                            <i className="fa-solid fa-utensils"></i>
-                          )}
-                        </div>
-                        <div className={styles.cardDetails}>
-                          <h4 className={styles.foodName}>{food.name}</h4>
-                          <div className={styles.priceTag}>${food.price.toFixed(2)}</div>
-                          <div className={styles.cardBottom}>
-                            <label className={styles.switch}>
-                              <input
-                                type="checkbox"
-                                checked={food.status === 'available'}
-                                onChange={() => handleToggleFoodStatus(food.id)}
-                              />
-                              <span className={styles.slider}></span>
-                            </label>
-                            <span style={{ fontSize: '0.85rem', color: food.status === 'available' ? '#4caf50' : '#f44336' }}>
-                              {food.status === 'available' ? 'Đang bán' : 'Tạm ẩn'}
-                            </span>
-                            <button style={{ padding: '5px 10px', fontSize: '0.85rem', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}>
-                              <i className="fa-solid fa-pen"></i>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p>Chưa có món ăn nào.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'orders' && (
-            <div>
-              <div style={{ marginBottom: '20px' }}>
-                <h3>Danh sách đơn hàng</h3>
-              </div>
-
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Đang tải đơn hàng...</div>
-              ) : (
-                <div className={styles.ordersList}>
-                  {orders.length > 0 ? (
-                    orders.map((order) => (
-                      <div key={order.id} className={styles.orderCard}>
-                        <div className={styles.orderHeader}>
-                          <div>
-                            <h4>Đơn #{order.id}</h4>
-                            <p style={{ color: '#999', fontSize: '0.9rem', margin: '5px 0 0 0' }}>{order.user_details?.full_name || 'N/A'}</p>
-                          </div>
-                          <span className={styles.orderStatus} style={{ 
-                            background: order.status === 'pending' ? '#FF9800' : order.status === 'confirmed' ? '#2196F3' : order.status === 'shipping' ? '#00BCD4' : '#4CAF50'
-                          }}>
-                            {order.status === 'pending' && 'Chờ xác nhận'}
-                            {order.status === 'confirmed' && 'Đã xác nhận'}
-                            {order.status === 'shipping' && 'Đang giao'}
-                            {order.status === 'completed' && 'Hoàn thành'}
-                          </span>
-                        </div>
-
-                        <div className={styles.orderDetails}>
-                          <p><strong>SĐT:</strong> {order.user_details?.phone || 'N/A'}</p>
-                          <p><strong>Địa chỉ:</strong> {order.user_details?.address_detail || 'N/A'}</p>
-                          <p><strong>Tổng tiền:</strong> <span style={{ color: '#ee4d2d', fontWeight: 'bold' }}>${order.total_price?.toFixed(2) || '0.00'}</span></p>
-                        </div>
-
-                        <div className={styles.orderActions}>
-                          {order.status === 'pending' && (
-                            <button
-                              className={styles.btnAction}
-                              onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
-                              style={{ background: '#2196F3' }}
-                            >
-                              Xác nhận
-                            </button>
-                          )}
-                          {order.status === 'confirmed' && (
-                            <button
-                              className={styles.btnAction}
-                              onClick={() => handleUpdateOrderStatus(order.id, 'shipping')}
-                              style={{ background: '#00BCD4' }}
-                            >
-                              Đang giao
-                            </button>
-                          )}
-                          {order.status === 'shipping' && (
-                            <button
-                              className={styles.btnAction}
-                              onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
-                              style={{ background: '#4CAF50' }}
-                            >
-                              Hoàn thành
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p style={{ textAlign: 'center', padding: '40px', color: '#999' }}>Chưa có đơn hàng nào</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </main>
+    <div className="container py-5 mt-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 className="fw-bold mb-0">Quản lý thực đơn</h4>
+          <p className="text-muted small">Cửa hàng: <span className="text-danger fw-bold">{shop?.shop_name || 'Loading...'}</span></p>
+        </div>
+        <button className="btn btn-danger shadow-sm px-4" onClick={() => { setCurrentFood(null); setFormData({name:'', price:'', image_url:'', category_id:1, description:''}); setShowModal(true); }}>
+          <i className="fa-solid fa-plus me-2"></i>Thêm món
+        </button>
       </div>
+
+      <div className="card border-0 shadow-sm">
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead className="table-light">
+              <tr>
+                <th className="ps-3">Món ăn</th>
+                <th className="text-center">Giá</th>
+                <th className="text-center">Trạng thái</th>
+                <th className="text-end pe-3">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {foods.map(food => (
+                <tr key={food.id}>
+                  <td className="ps-3">
+                    <div className="d-flex align-items-center">
+                      <img src={food.image_url || 'https://via.placeholder.com/50'} alt="" 
+                        className="rounded me-3 border" style={{ width: '45px', height: '45px', objectFit: 'cover' }} />
+                      <div className="fw-bold">{food.name}</div>
+                    </div>
+                  </td>
+                  <td className="text-center fw-bold text-danger">${parseFloat(food.price).toFixed(2)}</td>
+                  <td className="text-center">
+                    <div className="form-check form-switch d-inline-block">
+                      <input className="form-check-input" type="checkbox" checked={food.is_active} onChange={() => handleToggle(food.id)} />
+                    </div>
+                  </td>
+                  <td className="text-end pe-3">
+                    <button onClick={() => { setCurrentFood(food); setFormData(food); setShowModal(true); }} className="btn btn-sm btn-outline-primary me-2">
+                      <i className="fa-solid fa-pen"></i>
+                    </button>
+                    <button onClick={() => handleDelete(food.id)} className="btn btn-sm btn-outline-danger">
+                      <i className="fa-solid fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal chuẩn class Bootstrap 5 */}
+      {showModal && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow">
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bold">{currentFood ? 'Sửa món ăn' : 'Thêm món mới'}</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                  <div className="modal-body">
+                    <div className="mb-3">
+                      <label className="form-label small fw-bold">Tên món</label>
+                      <input type="text" className="form-control" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    </div>
+                    <div className="row">
+                      <div className="col-6 mb-3">
+                        <label className="form-label small fw-bold">Giá ($)</label>
+                        <input type="number" step="0.01" className="form-control" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                      </div>
+                      <div className="col-6 mb-3">
+                        <label className="form-label small fw-bold">Danh mục</label>
+                        <select className="form-select" value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})}>
+                          <option value="1">Đồ ăn</option>
+                          <option value="2">Đồ uống</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label small fw-bold">Link ảnh</label>
+                      <input type="text" className="form-control" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-light" onClick={() => setShowModal(false)}>Đóng</button>
+                    <button type="submit" className="btn btn-danger px-4" disabled={loading}>{loading ? 'Đang lưu...' : 'Lưu món'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      )}
     </div>
   );
 }

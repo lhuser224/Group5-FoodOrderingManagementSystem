@@ -8,8 +8,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { state } = useContext(AppContext);
   const cartCount = state.cart?.length || 0;
-
-  if (location.pathname === '/auth') return null;
+  if (window.location.pathname === '/auth') return null;
   
   const onLogout = () => {
     logout();
@@ -28,16 +27,17 @@ export default function Navbar() {
         {/* Right Icons */}
         <div className="d-flex align-items-center gap-3">
           
-          {/* Link động dựa trên Role */}
-          {user && user.role === 'customer' && (
-            <Link to="/register-seller" className="nav-link text-primary small fw-bold d-none d-md-block">
-              <i className="fa-solid fa-store me-1"></i>Đăng ký mở quán
+          {/* Link cho Chủ quán (shop_owner) hiện bên cạnh giỏ hàng */}
+          {user && user.role === 'shop_owner' && (
+            <Link to="/shop/dashboard" className="nav-link text-success small fw-bold d-none d-md-block">
+              <i className="fa-solid fa-shop me-1"></i>Quản lý quán
             </Link>
           )}
 
-          {user && user.role === 'seller' && (
-            <Link to="/seller/dashboard" className="nav-link text-success small fw-bold d-none d-md-block">
-              <i className="fa-solid fa-shop me-1"></i>Kênh người bán
+          {/* Link cho Khách hàng muốn mở quán */}
+          {user && user.role === 'customer' && (
+            <Link to="/register-seller" className="nav-link text-primary small fw-bold d-none d-md-block">
+              <i className="fa-solid fa-store me-1"></i>Đăng ký mở quán
             </Link>
           )}
 
@@ -65,35 +65,29 @@ export default function Navbar() {
                   <div className="fw-bold small text-dark">{user.full_name}</div>
                   <small className={`badge ${
                     user.role === 'admin' ? 'bg-danger' : 
-                    user.role === 'seller' ? 'bg-success' : 'bg-secondary'
+                    user.role === 'shop_owner' ? 'bg-success' : 'bg-secondary'
                   }`} style={{fontSize: '0.6rem'}}>
-                    {user.role?.toUpperCase()}
+                    {/* Hiển thị label đẹp cho chủ quán */}
+                    {user.role === 'shop_owner' ? 'CHỦ QUÁN' : user.role?.toUpperCase()}
                   </small>
                 </div>
                 <i className="fa-solid fa-circle-user fs-3 text-secondary"></i>
               </div>
 
               <ul className="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="userDropdown">
-                <li className="px-3 py-2 border-bottom d-sm-none">
-                  <div className="fw-bold">{user.full_name}</div>
-                  <small className="text-muted">{user.role}</small>
-                </li>
+                {/* Menu dành riêng cho shop_owner */}
+                {user.role === 'shop_owner' && (
+                  <li>
+                    <Link className="dropdown-item py-2" to="/shop/dashboard">
+                      <i className="fa-solid fa-chart-line me-2"></i>Kênh người bán
+                    </Link>
+                  </li>
+                )}
                 
-                {/* Menu cho Admin */}
                 {user.role === 'admin' && (
                   <li><Link className="dropdown-item py-2" to="/admin/dashboard"><i className="fa-solid fa-gauge me-2"></i>Admin Dashboard</Link></li>
                 )}
 
-                {/* Menu cho Seller */}
-                {user.role === 'seller' && (
-                  <li><Link className="dropdown-item py-2" to="/seller/dashboard"><i className="fa-solid fa-chart-line me-2"></i>Quản lý quán</Link></li>
-                )}
-
-                {/* Menu cho Customer muốn đăng ký làm Seller (Mobile) */}
-                {user.role === 'customer' && (
-                  <li className="d-md-none"><Link className="dropdown-item py-2 text-primary" to="/register-seller"><i className="fa-solid fa-store me-2"></i>Đăng ký mở quán</Link></li>
-                )}
-                
                 <li><Link className="dropdown-item py-2" to="/profile"><i className="fa-solid fa-user me-2"></i>Hồ sơ</Link></li>
                 <li><Link className="dropdown-item py-2" to="/history"><i className="fa-solid fa-box me-2"></i>Đơn hàng</Link></li>
                 <li><hr className="dropdown-divider" /></li>

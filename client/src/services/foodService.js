@@ -78,7 +78,6 @@ export const getFoodsByCategory = async (categoryId) => {
 
 export const deleteFood = async (shopId, foodId) => {
   try {
-    // Đổi /seller -> /shop
     return await axiosClient.delete(`/FoodO/foods/shop/${shopId}/foods/${foodId}`);
   } catch (error) {
     throw error;

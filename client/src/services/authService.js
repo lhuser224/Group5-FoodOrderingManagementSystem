@@ -50,4 +50,17 @@ export const register = async (fullName, phone, password, passwordConfirm) => {
   return response;
 };
 
+export const updateProfile = async (userData) => {
+  return await axiosClient.put('/FoodO/auth/profile', userData);
+};
+
+export const changePassword = async (oldPassword, newPassword) => {
+  const payload = { oldPassword, newPassword };
+  return await axiosClient.put('/FoodO/auth/change-password', payload);
+};
+
+export const getProfile = async () => {
+  return await axiosClient.get('/FoodO/auth/me'); 
+};
+
 export default { login, register };
