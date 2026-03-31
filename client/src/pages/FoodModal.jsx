@@ -1,6 +1,26 @@
+import { useState, useEffect } from 'react';
 import OptionManager from './OptionManager';
+import categoryService from '../services/categoryService'; 
 
 export default function FoodModal({ show, onClose, formData, setFormData, onSave, loading }) {
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    if (show) {
+      const fetchCategories = async () => {
+        try {
+          const res = await categoryService.getAllCategories();
+          if (res && res.success) {
+            setCategories(res.data);
+          }
+        } catch (error) {
+          console.error("Không thể tải danh mục món ăn:", error);
+        }
+      };
+      fetchCategories();
+    }
+  }, [show]);
+
   if (!show) return null;
 
   const handleFileChange = (e) => {
@@ -31,20 +51,30 @@ export default function FoodModal({ show, onClose, formData, setFormData, onSave
                     <div className="mb-3">
                       <label className="form-label small fw-bold">Tên món ăn</label>
                       <input type="text" className="form-control" required 
-                        value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                        value={formData.name || ''} 
+                        onChange={e => setFormData({...formData, name: e.target.value})} />
                     </div>
                     <div className="row">
                       <div className="col-6 mb-3">
                         <label className="form-label small fw-bold">Giá ($)</label>
                         <input type="number" step="0.01" className="form-control" required 
-                          value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                          value={formData.price || ''} 
+                          onChange={e => setFormData({...formData, price: e.target.value})} />
                       </div>
                       <div className="col-6 mb-3">
                         <label className="form-label small fw-bold">Danh mục</label>
-                        <select className="form-select" value={formData.category_id} 
-                          onChange={e => setFormData({...formData, category_id: e.target.value})}>
-                          <option value="1">Đồ ăn</option>
-                          <option value="2">Đồ uống</option>
+                        <select 
+                          className="form-select" 
+                          required
+                          value={formData.category_id || ''} 
+                          onChange={e => setFormData({...formData, category_id: e.target.value})}
+                        >
+                          <option value="">Chọn danh mục</option>
+                          {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -70,7 +100,7 @@ export default function FoodModal({ show, onClose, formData, setFormData, onSave
                 <hr className="my-4" />
 
                 <OptionManager 
-                  options={formData.options} 
+                  options={formData.options || []} 
                   setOptions={(newOptions) => setFormData({...formData, options: newOptions})} 
                 />
               </div>
